@@ -1,0 +1,38 @@
+mvn package - compile + package
+mvn install - compile + package + install pt local repository pt folosire de alte proiecte
+
+
+
+exemplu de pom.xml pt crearea fisierelor jar:
+
+    <properties>
+        <maven.compiler.source>6</maven.compiler.source>
+        <maven.compiler.target>1.6</maven.compiler.target>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.1.1</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>App</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+
+
+exemplu de Dockerfile pt crearea unei imagini java cu jar
+
+FROM openjdk:10.0.2-jdk-oracle
+VOLUME /tmp
+ARG JAR_FILE=target/TestApp-1.0-SNAPSHOT.jar
+ADD ${JAR_FILE} entry.jar
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/entry.jar"]

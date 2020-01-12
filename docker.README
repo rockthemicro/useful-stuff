@@ -1,0 +1,160 @@
+IMPORTANT
+DACA DOCKERUL CONSUMA PREA MULT SPATIU, POATE NU STERGE BINE DATELE. POTI FOLOSI rm -rf /var/lib/docker/volumes/*
+
+Docker ruleaza in continuu ca un daemon (e un server, de fapt): dockerd (ps aux | grep docker)
+sudo systemctl enable docker
+sudo systemctl start docker
+
+sudo systemctl stop docker
+sudo systemctl disable docker
+
+pt vizualizare imagini active: sudo docker ps
+
+[ORACLE XE 11g]
+pt rulare imagine oracle xe: sudo docker run -d --shm-size=1g -p 8080:8080 -p 1521:1521 -v /local-initdb:/etc/entrypoint-initdb.d alexeiled/docker-oracle-xe-11g
+pt oprire imagine: sudo docker ps; sudo docker stop CONTAINER_ID
+
+pt ssh in container: sudo docker exec -i -t [container_id] /bin/bash
+
+pt conectare la oracle: sqlplus64 system/oracle@//localhost:1521/xe
+
+date oracle xe
+hostname: localhost
+port: 1521
+sid: xe
+username: system
+password: oracle
+
+
+
+
+ATENTIE
+Un container, dupa ce e omorat, TREBUIE SI STERS (docker ps -a si docker rm <nume_container>),
+altfel el ocupa intreaga dimensiune a imaginii lui originale.
+O imagine se sterge cu docker image ls si docker rmi repository:tag
+
+
+
+[MYSQL]
+pornire mysql container:
+docker run --name mysqldb -e MYSQL_ROOT_PASSWORD=mama -p 3306:3306 -d mysql
+
+pt conectare la mysql:
+docker exec -it mysqldb bash
+mysql -u root -p (apoi parola mama)
+
+pt folosire:
+show databases;
+use <database_name>;
+
+show tables;
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Spring]
+cd path-to-complete/
+./gradlew build
+
+pt create image + push pe dockerhub
+docker tag local-image:tagname new-repo:tagname
+docker push new-repo:tagname
+
+docker build -t gs-rest-service .
+docker tag gs-rest-service:latest shawney/gs-rest-service:latest
+docker push shawney/gs-rest-service:latest 
+
+docker run -p 8080:8080 gs-rest-service
+
+
+[Docker Stack]
+
+docker swarm init					      <>	 docker swarm leave (--force)
+docker stack deploy -c docker-compose.yml systemname          <>         docker stack rm systemname
+docker service ls
+
+pt urmarire log: docker service logs --follow systemname_containername
+pt atasare la containere pornite cu tty si stdin_open pe true: docker attach <name>
+
+
+[Dockerfile]
+
+---RUN vs CMD vs ENTRYPOINT http://goinbigdata.com/docker-run-vs-cmd-vs-entrypoint/
+rezumat: RUN este folosit in general pt instalarea de pachete extra, in timp ce
+CMD si ENTRYPOINT sunt folosite pt rularea containerului, cu anumite diferente
+
+---ADD vs VOLUME
+ADD
+The fundamental difference between these two is that ADD makes whatever you're adding,
+be it a folder or just a file actually part of your image. Anyone who uses the image
+you've built afterwards will have access to whatever you ADD. This is true even if
+you afterwards remove it because Docker works in layers and the ADD layer will still
+exist as part of the image. To be clear, you only ADD something at build time and
+cannot ever ADD at run-time.
+
+A few examples of cases where you'd want to use ADD:
+
+You have some requirements in a requirements.txt file that you want to reference and
+install in your Dockerfile. You can then do: ADD ./requirements.txt /requirements.txt
+followed by RUN pip install -r /requirements.txt
+You want to use your app code as context in your Dockerfile, for example, if you want
+to set your app directory as the working dir in your image and to have the default
+command in a container run from your image actually run your app, you can do:
+
+ADD ./ /usr/local/git/my_app
+
+WORKDIR /usr/local/git/my_app
+
+CMD python ./main.py
+
+VOLUME
+Volume, on the other hand, just lets a container run from your image have access to
+some path on whatever local machine the container is being run on. You cannot use
+files from your VOLUME directory in your Dockerfile. Anything in your volume directory
+will not be accessible at build-time but will be accessible at run-time.
+
+A few examples of cases where you'd want to use VOLUME:
+
+The app being run in your container makes logs in /var/log/my_app. You want those logs
+to be accessible on the host machine and not to be deleted when the container is
+removed. You can do this by creating a mount point at /var/log/my_app by adding
+VOLUME /var/log/my_app to your Dockerfile and then running your container with
+docker run -v /host/log/dir/my_app:/var/log/my_app some_repo/some_image:some_tag
+You have some local settings files you want the app in the container to have access to.
+Perhaps those settings files are different on your local machine vs dev vs production.
+Especially so if those settings files are secret, in which case you definitely do not want
+them in your image. A good strategy in that case is to add
+VOLUME /etc/settings/my_app_settings to your Dockerfile, run your container with
+docker run -v /host/settings/dir:/etc/settings/my_app_settings some_repo/some_image:some_tag,
+and make sure the /host/settings/dir exists in all environments you expect your app to be run.
+
+--- ADD vs COPY
+Sometimes you see COPY or ADD being used in a Dockerfile, but 99% of the time you should be
+using COPY, here's why.
+COPY and ADD are both Dockerfile instructions that serve similar purposes. They let you copy
+files from a specific location into a Docker image.
+
+COPY takes in a src and destination. It only lets you copy in a local file or directory from
+your host (the machine building the Docker image) into the Docker image itself.
+
+ADD lets you do that too, but it also supports 2 other sources. First, you can use a URL instead
+of a local file / directory. Secondly, you can extract a tar file from the source directly into
+the destination.
+
+In most cases if you’re using a URL, you’re downloading a zip file and are then using the RUN
+command to extract it. However, you might as well just use RUN with curl instead of ADD here so
+you chain everything into 1 RUN command to make a smaller Docker image.
+
+A valid use case for ADD is when you want to extract a local tar file into a specific directory
+in your Docker image. This is exactly what the Alpine image does with ADD rootfs.tar.gz /.
+
+If you’re copying in local files to your Docker image, always use COPY because it’s more explicit.
